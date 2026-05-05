@@ -14,6 +14,7 @@ from backend.agents.base_agent import AgentMessage
 from backend.api.dependencies import CurrentUser, Registry
 from backend.orchestration.pipeline import MatadoraPipeline, PipelineMode
 from backend.orchestration.router import SemanticRouter
+from backend.orchestration.tech_extractor import extract_technology
 from backend.services import memory
 
 router = APIRouter(prefix="/orchestration", tags=["orchestration"])
@@ -60,6 +61,7 @@ class RunResponse(BaseModel):
     routed_to:   list[str]
     messages:    list[MessageOut]
     metadata:    dict[str, Any]
+    technology:  dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ def _msg_out(msg: AgentMessage) -> MessageOut:
 )
 async def run_pipeline(
     body: RunRequest,
-    _: CurrentUser,
+    user: CurrentUser,
     registry: Registry,
 ) -> RunResponse:
     """
@@ -123,12 +125,20 @@ async def run_pipeline(
         round_robin_rounds=body.round_robin_rounds,
     )
 
+    technology = await extract_technology(
+        session_id=body.session_id,
+        messages=result.messages,
+        registry=registry,
+        user_id=user.get("sub"),
+    )
+
     return RunResponse(
         session_id=result.session_id,
         mode=result.mode.value,
         routed_to=result.routed_to,
         messages=[_msg_out(m) for m in result.messages],
         metadata=result.metadata,
+        technology=technology,
     )
 
 
