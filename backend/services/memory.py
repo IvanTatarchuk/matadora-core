@@ -154,6 +154,7 @@ async def save_message(message: AgentMessage) -> MessageRecord:
     vector = await embed_text(message.content)
 
     payload: dict[str, Any] = {
+        "id":             message.id,
         "session_id":     message.session_id,
         "role":           message.role.value,
         "content":        message.content,

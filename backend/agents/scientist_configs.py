@@ -97,6 +97,7 @@ class OpenAIScientist(BaseScientist):
 
 _SCIENTIST_DEFINITIONS: list[dict[str, Any]] = [
     {
+        "id": "4ca6a58a-179d-425b-9849-aa2f39a81860",
         "name": "Athena",
         "role": AgentRole.LEAD,
         "persona": PersonaConfig(
@@ -114,6 +115,7 @@ _SCIENTIST_DEFINITIONS: list[dict[str, Any]] = [
         "temperature": 0.5,
     },
     {
+        "id": "82673481-9363-476e-8891-3c63d69cac11",
         "name": "Prometheus",
         "role": AgentRole.RESEARCHER,
         "persona": PersonaConfig(
@@ -131,6 +133,7 @@ _SCIENTIST_DEFINITIONS: list[dict[str, Any]] = [
         "temperature": 0.4,
     },
     {
+        "id": "f86439da-cc78-41f1-9634-f84580ed0df6",
         "name": "Socrates",
         "role": AgentRole.CRITIC,
         "persona": PersonaConfig(
@@ -150,6 +153,7 @@ _SCIENTIST_DEFINITIONS: list[dict[str, Any]] = [
         "temperature": 0.6,
     },
     {
+        "id": "63839eba-7198-47b8-894e-23819ee8c3af",
         "name": "Hermes",
         "role": AgentRole.ANALYST,
         "persona": PersonaConfig(
@@ -167,6 +171,7 @@ _SCIENTIST_DEFINITIONS: list[dict[str, Any]] = [
         "temperature": 0.3,
     },
     {
+        "id": "4e821ef0-aa6b-4d36-af17-6cf2d655f15a",
         "name": "Mnemosyne",
         "role": AgentRole.SYNTHESIZER,
         "persona": PersonaConfig(
@@ -223,6 +228,7 @@ def build_default_registry(client: AsyncOpenAI | None = None) -> ScientistRegist
     registry = ScientistRegistry()
     for defn in _SCIENTIST_DEFINITIONS:
         config = AgentConfig(
+            id=defn["id"],
             name=defn["name"],
             role=defn["role"],
             persona=defn["persona"],
