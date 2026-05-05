@@ -20,11 +20,14 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 class AgentRole(str, Enum):
-    LEAD       = "lead"
-    ANALYST    = "analyst"
-    CRITIC     = "critic"
+    LEAD        = "lead"
+    ANALYST     = "analyst"
+    CRITIC      = "critic"
     SYNTHESIZER = "synthesizer"
-    RESEARCHER = "researcher"
+    RESEARCHER  = "researcher"
+    ENGINEER    = "engineer"
+    LEGAL       = "legal"
+    FINANCIAL   = "financial"
 
 
 class MessageRole(str, Enum):

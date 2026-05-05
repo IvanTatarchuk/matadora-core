@@ -51,28 +51,14 @@ async def seed() -> None:
     key  = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     client = await acreate_client(url, key)
 
-    # Check existing scientists
-    existing = await client.table("scientists_core").select("name").execute()
-    existing_names = {r["name"] for r in existing.data}
+    # Delete ALL old scientists to start fresh
+    print("  🗑   Removing old scientists...")
+    await client.table("scientists_core").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
 
     inserted = 0
-    skipped  = 0
 
     for defn in _SCIENTIST_DEFINITIONS:
         name = defn["name"]
-
-        if name in existing_names:
-            print(f"  ⏭  {name} — already exists, skipping")
-            skipped += 1
-            continue
-
-        config = AgentConfig(
-            name=name,
-            role=defn["role"],
-            persona=defn["persona"],
-            system_prompt=defn["system_prompt"],
-            temperature=defn.get("temperature", 0.7),
-        )
 
         print(f"  🔢  Generating embedding for {name}…", end=" ", flush=True)
         embed_input = _build_embed_text(defn)
@@ -80,19 +66,19 @@ async def seed() -> None:
         print(f"done ({len(vector)}-dim)")
 
         row = {
-            "id":        config.id,
-            "name":      config.name,
-            "role":      config.role.value,
-            "persona":   config.persona.model_dump(),
+            "id":        defn["id"],
+            "name":      name,
+            "role":      defn["role"].value,
+            "persona":   defn["persona"].model_dump(),
             "embedding": vector,
             "is_active": True,
         }
 
         await client.table("scientists_core").insert(row).execute()
-        print(f"  ✅  {name} ({config.role.value}) inserted")
+        print(f"  ✅  {name} ({defn['role'].value}) inserted")
         inserted += 1
 
-    print(f"\nDone — {inserted} inserted, {skipped} skipped.")
+    print(f"\nDone — {inserted} scientists seeded.")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes import approvals, messages, orchestration, scientists, sessions
+from backend.api.routes.technologies import router as tech_router, wallet_router
 from backend.api.dependencies import get_registry
 
 load_dotenv()
@@ -71,6 +72,8 @@ app.include_router(messages.router,       prefix=_PREFIX)
 app.include_router(scientists.router,     prefix=_PREFIX)
 app.include_router(approvals.router,      prefix=_PREFIX)
 app.include_router(orchestration.router,  prefix=_PREFIX)
+app.include_router(tech_router,           prefix=_PREFIX)
+app.include_router(wallet_router,         prefix=_PREFIX)
 
 
 # ---------------------------------------------------------------------------
