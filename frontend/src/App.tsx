@@ -2,24 +2,27 @@ import { useEffect, useState } from "react";
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
 import { supabase } from "./lib/supabase";
-import { sessions as sessionsApi, scientists as scientistsApi } from "./lib/api";
+import { sessions as sessionsApi, scientists as scientistsApi, wallet as walletApi } from "./lib/api";
 import type { Session, Scientist } from "./lib/api";
 import LoginPage from "./pages/LoginPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
+import MarketplacePage from "./pages/MarketplacePage";
+import TeamPage from "./pages/TeamPage";
 import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 
-type View = "chat" | "approvals";
+type View = "chat" | "approvals" | "marketplace" | "team";
 
 export default function App() {
   const [authSession, setAuthSession] = useState<SupabaseSession | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const [sessions, setSessions]         = useState<Session[]>([]);
-  const [scientists, setScientists]     = useState<Scientist[]>([]);
+  const [sessions, setSessions]           = useState<Session[]>([]);
+  const [scientists, setScientists]       = useState<Scientist[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
-  const [pendingCount, _setPendingCount] = useState(0);
-  const [view, setView]                 = useState<View>("chat");
+  const [pendingCount, _setPendingCount]  = useState(0);
+  const [view, setView]                   = useState<View>("chat");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -34,16 +37,8 @@ export default function App() {
 
   useEffect(() => {
     if (!authSession) return;
-
-    scientistsApi.list().then(setScientists).catch(() => {
-      setScientists([
-        { id: "1", name: "Athena",    role: "lead",        persona: {}, is_active: true, created_at: "" },
-        { id: "2", name: "Prometheus",role: "researcher",  persona: {}, is_active: true, created_at: "" },
-        { id: "3", name: "Socrates",  role: "critic",      persona: {}, is_active: true, created_at: "" },
-        { id: "4", name: "Hermes",    role: "analyst",     persona: {}, is_active: true, created_at: "" },
-        { id: "5", name: "Mnemosyne", role: "synthesizer", persona: {}, is_active: true, created_at: "" },
-      ]);
-    });
+    scientistsApi.list().then(setScientists).catch(() => {});
+    walletApi.get().then(w => setWalletBalance(w.balance)).catch(() => {});
   }, [authSession]);
 
   const loadSessions = () => {
@@ -80,11 +75,21 @@ export default function App() {
 
   if (!authSession) return <LoginPage />;
 
-  if (view === "approvals") {
+  if (view === "approvals")  return <div className="h-screen overflow-hidden"><ApprovalsPage onBack={() => setView("chat")} /></div>;
+  if (view === "marketplace") return <div className="h-screen overflow-hidden flex"><SidebarWrapper /><div className="flex-1 overflow-hidden"><MarketplacePage onBack={() => setView("chat")} /></div></div>;
+  if (view === "team")        return <div className="h-screen overflow-hidden flex"><SidebarWrapper /><div className="flex-1 overflow-hidden"><TeamPage onBack={() => setView("chat")} /></div></div>;
+
+  function SidebarWrapper() {
     return (
-      <div className="h-screen overflow-hidden">
-        <ApprovalsPage onBack={() => setView("chat")} />
-      </div>
+      <Sidebar
+        sessions={sessions} activeId={activeSession}
+        onSelect={(id) => { setActiveSession(id); setView("chat"); }}
+        onNew={handleNewSession} pendingCount={pendingCount}
+        onApprovalsClick={() => setView("approvals")}
+        onMarketplace={() => setView("marketplace")}
+        onTeam={() => setView("team")}
+        walletBalance={walletBalance}
+      />
     );
   }
 
@@ -97,6 +102,9 @@ export default function App() {
         onNew={handleNewSession}
         pendingCount={pendingCount}
         onApprovalsClick={() => setView("approvals")}
+        onMarketplace={() => setView("marketplace")}
+        onTeam={() => setView("team")}
+        walletBalance={walletBalance}
       />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">

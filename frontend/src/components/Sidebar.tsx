@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { Plus, MessageSquare, CheckCircle, LogOut, FlaskConical } from "lucide-react";
+import { Plus, MessageSquare, CheckCircle, LogOut, FlaskConical, ShoppingCart, Users, Coins } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import type { Session } from "../lib/api";
 
 interface Props {
-  sessions:        Session[];
-  activeId:        string | null;
-  onSelect:        (id: string) => void;
-  onNew:           () => void;
-  pendingCount:    number;
-  onApprovalsClick: () => void;
+  sessions:          Session[];
+  activeId:          string | null;
+  onSelect:          (id: string) => void;
+  onNew:             () => void;
+  pendingCount:      number;
+  onApprovalsClick:  () => void;
+  onMarketplace:     () => void;
+  onTeam:            () => void;
+  walletBalance:     number | null;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -20,7 +23,8 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export default function Sidebar({
-  sessions, activeId, onSelect, onNew, pendingCount, onApprovalsClick,
+  sessions, activeId, onSelect, onNew, pendingCount,
+  onApprovalsClick, onMarketplace, onTeam, walletBalance,
 }: Props) {
   const [creating, setCreating] = useState(false);
 
@@ -75,6 +79,21 @@ export default function Sidebar({
 
       {/* Bottom nav */}
       <div className="border-t border-white/8 px-2 py-2 space-y-0.5">
+        {/* Wallet balance */}
+        {walletBalance !== null && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 mb-1">
+            <Coins size={13} className="text-yellow-400 shrink-0" />
+            <span className="text-xs text-yellow-300 font-semibold">{walletBalance.toFixed(1)} MTD</span>
+          </div>
+        )}
+        <button onClick={onMarketplace} className="btn-ghost w-full">
+          <ShoppingCart size={15} />
+          Marketplace
+        </button>
+        <button onClick={onTeam} className="btn-ghost w-full">
+          <Users size={15} />
+          Our Team
+        </button>
         <button
           onClick={onApprovalsClick}
           className="btn-ghost w-full justify-between"

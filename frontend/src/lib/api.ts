@@ -57,6 +57,36 @@ export interface SyncResult {
   errors: string[];
 }
 
+export interface Technology {
+  id:           string;
+  title:        string;
+  description:  string;
+  summary:      string;
+  category:     string;
+  status:       "draft" | "published" | "sold" | "archived";
+  price_mtd:    number;
+  inventor_ids: string[];
+  session_id:   string | null;
+  created_at:   string;
+}
+
+export interface Wallet {
+  id:         string;
+  user_id:    string;
+  balance:    number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Transaction {
+  id:            string;
+  type:          "deposit" | "purchase" | "refund" | "reward" | "withdrawal";
+  amount:        number;
+  description:   string;
+  technology_id: string | null;
+  created_at:    string;
+}
+
 // ---------------------------------------------------------------------------
 // Core fetch helper
 // ---------------------------------------------------------------------------
@@ -202,4 +232,47 @@ export const approvals = {
       method: "PATCH",
       body: JSON.stringify({ decision, review_note: note }),
     }),
+};
+
+// ---------------------------------------------------------------------------
+// Technologies (Marketplace)
+// ---------------------------------------------------------------------------
+
+export const technologies = {
+  list: (status = "published", category?: string) =>
+    apiFetch<Technology[]>(
+      `/technologies?status=${status}${category ? `&category=${category}` : ""}`
+    ),
+
+  get: (id: string) => apiFetch<Technology>(`/technologies/${id}`),
+
+  create: (data: {
+    title: string; description: string; summary?: string;
+    category?: string; price_mtd?: number; inventor_ids?: string[];
+  }) =>
+    apiFetch<Technology>("/technologies", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  publish: (id: string) =>
+    apiFetch<Technology>(`/technologies/${id}/publish`, { method: "POST" }),
+
+  buy: (id: string) =>
+    apiFetch<{ success: boolean; price_paid: number; new_balance: number; technology: string }>(
+      `/technologies/${id}/buy`, { method: "POST" }
+    ),
+
+  myPurchases: () => apiFetch<Array<{ purchased_at: string; price_paid_mtd: number; technologies: Technology }>>(
+    "/technologies/mine"
+  ),
+};
+
+// ---------------------------------------------------------------------------
+// Wallet
+// ---------------------------------------------------------------------------
+
+export const wallet = {
+  get:          () => apiFetch<Wallet>("/wallet"),
+  transactions: (limit = 20) => apiFetch<Transaction[]>(`/wallet/transactions?limit=${limit}`),
 };
