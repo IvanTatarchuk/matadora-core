@@ -18,7 +18,7 @@ export default function App() {
   const [sessions, setSessions]         = useState<Session[]>([]);
   const [scientists, setScientists]     = useState<Scientist[]>([]);
   const [activeSession, setActiveSession] = useState<string | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCount, _setPendingCount] = useState(0);
   const [view, setView]                 = useState<View>("chat");
 
   useEffect(() => {
