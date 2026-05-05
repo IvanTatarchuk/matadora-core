@@ -1,43 +1,46 @@
 """
 Matadora Core — Phase 2: Agent Core
-Embedding service: Together AI (m2-bert 768-dim) via OpenAI-compatible API.
+Embedding service: Nomic AI (nomic-embed-text-v1.5, 768-dim) via native httpx.
 """
 
 from __future__ import annotations
 
 import hashlib
 import os
-from functools import lru_cache
 from typing import Sequence
 
-from openai import AsyncOpenAI
+import httpx
 
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-EMBEDDING_MODEL = os.environ.get("TOGETHER_EMBED_MODEL", "togethercomputer/m2-bert-80M-8k-retrieval")
+EMBEDDING_MODEL = os.environ.get("NOMIC_EMBED_MODEL", "nomic-embed-text-v1.5")
 EMBEDDING_DIM   = 768
 CACHE_SIZE      = 512        # max unique texts kept in LRU cache
+_NOMIC_URL      = "https://api-atlas.nomic.ai/v1/embedding/text"
 
 
 # ---------------------------------------------------------------------------
-# Module-level client (lazy-init)
+# Internal HTTP helper
 # ---------------------------------------------------------------------------
 
-_client: AsyncOpenAI | None = None
-
-
-def _get_client() -> AsyncOpenAI:
-    global _client
-    if _client is None:
-        base = os.environ.get("TOGETHER_BASE_URL", "https://api.together.xyz")
-        _client = AsyncOpenAI(
-            base_url=f"{base.rstrip('/')}/v1",
-            api_key=os.environ["TOGETHER_API_KEY"],
+async def _nomic_embed(texts: list[str]) -> list[list[float]]:
+    api_key = os.environ["NOMIC_API_KEY"]
+    payload = {
+        "model": EMBEDDING_MODEL,
+        "texts": texts,
+        "task_type": "search_document",
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _NOMIC_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=payload,
         )
-    return _client
+        resp.raise_for_status()
+    return resp.json()["embeddings"]
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +74,7 @@ def _cache_set(text: str, vector: list[float]) -> None:
 async def embed_text(
     text: str,
     *,
-    client: AsyncOpenAI | None = None,
+    client: object | None = None,
     use_cache: bool = True,
 ) -> list[float]:
     """
@@ -80,12 +83,12 @@ async def embed_text(
     Parameters
     ----------
     text       : Input text (will be truncated to model max by the API if needed).
-    client     : Optional AsyncOpenAI client; uses module-level client if omitted.
+    client     : Ignored (kept for API compatibility).
     use_cache  : If True, checks in-process cache before calling the API.
 
     Returns
     -------
-    768-dimensional float vector (Together AI m2-bert).
+    768-dimensional float vector (Nomic AI nomic-embed-text-v1.5).
     """
     text = text.strip()
     if not text:
@@ -96,12 +99,7 @@ async def embed_text(
         if cached is not None:
             return cached
 
-    _c = client or _get_client()
-    response = await _c.embeddings.create(
-        input=text,
-        model=EMBEDDING_MODEL,
-    )
-    vector = response.data[0].embedding
+    vector = (await _nomic_embed([text]))[0]
 
     if use_cache:
         _cache_set(text, vector)
@@ -112,7 +110,7 @@ async def embed_text(
 async def embed_batch(
     texts: Sequence[str],
     *,
-    client: AsyncOpenAI | None = None,
+    client: object | None = None,
     use_cache: bool = True,
     batch_size: int = 100,
 ) -> list[list[float]]:
@@ -142,19 +140,12 @@ async def embed_batch(
         uncached_indices.append(i)
 
     if uncached_indices:
-        _c = client or _get_client()
         for chunk_start in range(0, len(uncached_indices), batch_size):
             chunk_indices = uncached_indices[chunk_start : chunk_start + batch_size]
             chunk_texts   = [texts[i] for i in chunk_indices]
-
-            response = await _c.embeddings.create(
-                input=chunk_texts,
-                model=EMBEDDING_MODEL,
-            )
-
-            for offset, item in enumerate(response.data):
-                idx    = chunk_indices[offset]
-                vector = item.embedding
+            vectors = await _nomic_embed(chunk_texts)
+            for offset, vector in enumerate(vectors):
+                idx = chunk_indices[offset]
                 results[idx] = vector
                 if use_cache:
                     _cache_set(texts[idx], vector)
@@ -166,7 +157,7 @@ async def embed_scientist_domain(
     persona_description: str,
     domain_keywords: list[str],
     *,
-    client: AsyncOpenAI | None = None,
+    client: object | None = None,
 ) -> list[float]:
     """
     Create a domain embedding for a scientist by combining their
