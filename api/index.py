@@ -34,14 +34,3 @@ app.include_router(wallet_router,         prefix=_PREFIX)
 def health():
     return {"status": "ok", "version": "0.5.0"}
 
-@app.get("/_debug")
-def debug_info():
-    import traceback
-    result = {"env_keys": list(os.environ.keys()), "has_groq": "GROQ_API_KEY" in os.environ}
-    try:
-        from backend.api.dependencies import get_registry
-        reg = get_registry()
-        result["registry"] = len(list(reg.all()))
-    except Exception:
-        result["registry_error"] = traceback.format_exc()
-    return result
