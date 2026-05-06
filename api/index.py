@@ -1,20 +1,35 @@
 import sys
 import os
-import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from backend.api.routes import approvals, messages, orchestration, scientists, sessions
+from backend.api.routes.technologies import router as tech_router, wallet_router
 
-_import_error = None
-try:
-    from backend.api.main import app as _real_app
-    app = _real_app
-except Exception as e:
-    _import_error = traceback.format_exc()
+_allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
-@app.get("/_debug")
-def debug():
-    return {"sys_path": sys.path, "error": _import_error, "cwd": os.getcwd()}
+app = FastAPI(title="Matadora Core API", version="0.5.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _allowed_origins],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_PREFIX = "/api/v1"
+app.include_router(sessions.router,       prefix=_PREFIX)
+app.include_router(messages.router,       prefix=_PREFIX)
+app.include_router(scientists.router,     prefix=_PREFIX)
+app.include_router(approvals.router,      prefix=_PREFIX)
+app.include_router(orchestration.router,  prefix=_PREFIX)
+app.include_router(tech_router,           prefix=_PREFIX)
+app.include_router(wallet_router,         prefix=_PREFIX)
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": "0.5.0"}
