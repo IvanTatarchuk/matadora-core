@@ -4,7 +4,7 @@ import type { Message, Scientist, Technology } from "../lib/api";
 import { messages as messagesApi } from "../lib/api";
 import { getAccessToken } from "../lib/supabase";
 
-const BASE = "/api/v1";
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/v1";
 
 const SCIENTIST_COLORS: Record<string, string> = {
   "Albert Einstein":    "text-blue-400    bg-blue-500/10    border-blue-500/30",

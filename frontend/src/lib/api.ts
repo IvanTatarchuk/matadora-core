@@ -1,6 +1,6 @@
 import { getAccessToken } from "./supabase";
 
-const BASE = "/api/v1";
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types (mirrors backend Pydantic models)
