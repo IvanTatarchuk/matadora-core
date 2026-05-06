@@ -26,10 +26,10 @@ from backend.agents.base_agent import (
 # ---------------------------------------------------------------------------
 
 def _make_groq_client() -> AsyncOpenAI:
-    base = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai")
+    base = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai").strip()
     return AsyncOpenAI(
         base_url=f"{base.rstrip('/')}/v1",
-        api_key=os.environ["GROQ_API_KEY"],
+        api_key=os.environ["GROQ_API_KEY"].strip(),
     )
 
 
