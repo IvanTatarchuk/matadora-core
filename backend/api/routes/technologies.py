@@ -29,6 +29,47 @@ async def _db():
     )
 
 
+def _technology_owner_from_metadata(metadata: dict[str, Any]) -> str | None:
+    """Support both current and legacy ownership metadata keys."""
+    owner_id = metadata.get("created_by") or metadata.get("created_by_user")
+    return str(owner_id) if owner_id else None
+
+
+def _technology_embedding_text(title: str, description: str) -> str:
+    parts = [title.strip(), description.strip()]
+    return " ".join(part for part in parts if part)
+
+
+async def _get_technology_or_404(db, tech_id: str) -> dict[str, Any]:
+    res = await (
+        db.table("technologies")
+        .select("id,title,description,metadata")
+        .eq("id", tech_id)
+        .limit(1)
+        .execute()
+    )
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Technology not found")
+    return res.data[0]
+
+
+async def _require_technology_owner(db, tech_id: str, user_id: str) -> dict[str, Any]:
+    technology = await _get_technology_or_404(db, tech_id)
+    metadata = technology.get("metadata") or {}
+    owner_id = _technology_owner_from_metadata(metadata)
+    if not owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Technology owner is not recorded.",
+        )
+    if owner_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the technology owner can modify or publish it.",
+        )
+    return technology
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -99,7 +140,7 @@ async def get_technology(tech_id: str, user: CurrentUser):
 async def create_technology(body: TechnologyCreate, user: CurrentUser):
     """Create a new technology (draft). Scientists or users can propose."""
     db = await _db()
-    vector = await embed_text(f"{body.title}. {body.description}")
+    vector = await embed_text(_technology_embedding_text(body.title, body.description))
     row: dict[str, Any] = {
         "title":          body.title,
         "description":    body.description,
@@ -120,10 +161,13 @@ async def create_technology(body: TechnologyCreate, user: CurrentUser):
 @router.patch("/{tech_id}")
 async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentUser):
     db = await _db()
+    technology = await _require_technology_owner(db, tech_id, user["sub"])
     update: dict[str, Any] = {k: v for k, v in body.model_dump().items() if v is not None}
     if "title" in update or "description" in update:
-        existing = (await db.table("technologies").select("title,description").eq("id", tech_id).single().execute()).data
-        text = f"{update.get('title', existing['title'])}. {update.get('description', existing['description'])}"
+        text = _technology_embedding_text(
+            update.get("title", technology["title"]),
+            update.get("description", technology["description"]),
+        )
         update["content_vector"] = await embed_text(text)
     res = await db.table("technologies").update(update).eq("id", tech_id).execute()
     if not res.data:
@@ -135,6 +179,7 @@ async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentU
 async def publish_technology(tech_id: str, user: CurrentUser):
     """Mark technology as published (available in marketplace)."""
     db = await _db()
+    await _require_technology_owner(db, tech_id, user["sub"])
     res = await db.table("technologies").update({"status": "published"}).eq("id", tech_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Technology not found")

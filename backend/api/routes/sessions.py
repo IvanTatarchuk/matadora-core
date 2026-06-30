@@ -83,6 +83,21 @@ async def create_session(
 
 
 @router.get(
+    "",
+    response_model=list[SessionResponse],
+    summary="List sessions",
+)
+async def list_sessions(
+    _: CurrentUser,
+    status: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[SessionResponse]:
+    records = await memory.list_sessions(status=status, limit=limit, offset=offset)
+    return [_to_response(rec) for rec in records]
+
+
+@router.get(
     "/{session_id}",
     response_model=SessionResponse,
     summary="Get a session by ID",

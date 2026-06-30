@@ -35,13 +35,12 @@ export default function App() {
         walletApi.get().then(w => setWalletBalance(w.balance)).catch(() => { });
     }, [authSession]);
     const loadSessions = () => {
-        return fetch("/api/v1/sessions", {
-            headers: { Authorization: `Bearer ${authSession?.access_token}` },
-        })
-            .then((r) => r.json())
+        return sessionsApi
+            .list()
             .then((data) => {
-            if (Array.isArray(data))
+            if (Array.isArray(data)) {
                 setSessions(data);
+            }
         })
             .catch(() => { });
     };

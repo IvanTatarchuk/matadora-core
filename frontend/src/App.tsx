@@ -42,12 +42,12 @@ export default function App() {
   }, [authSession]);
 
   const loadSessions = () => {
-    return fetch("/api/v1/sessions", {
-      headers: { Authorization: `Bearer ${authSession?.access_token}` },
-    })
-      .then((r) => r.json())
-      .then((data: Session[]) => {
-        if (Array.isArray(data)) setSessions(data);
+    return sessionsApi
+      .list()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSessions(data);
+        }
       })
       .catch(() => {});
   };
