@@ -45,7 +45,9 @@ export default function App() {
     return sessionsApi
       .list()
       .then((data) => {
-        setSessions(data);
+        if (Array.isArray(data)) {
+          setSessions(data);
+        }
       })
       .catch(() => {});
   };
