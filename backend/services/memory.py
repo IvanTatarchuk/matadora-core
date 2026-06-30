@@ -114,6 +114,26 @@ async def get_session(session_id: str) -> SessionRecord | None:
     return _parse_session(res.data[0]) if res.data else None
 
 
+async def list_sessions(
+    *,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[SessionRecord]:
+    """Fetch sessions ordered newest-first."""
+    client = await _get_client()
+    query = (
+        client.table("sessions")
+        .select("*")
+        .order("updated_at", desc=True)
+        .range(offset, offset + limit - 1)
+    )
+    if status:
+        query = query.eq("status", status)
+    res = await query.execute()
+    return [_parse_session(row) for row in res.data]
+
+
 async def close_session(session_id: str) -> SessionRecord | None:
     """Mark a session as closed."""
     client = await _get_client()

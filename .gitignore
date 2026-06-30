@@ -22,6 +22,7 @@ frontend/.next/
 
 # Supabase CLI binary (downloaded locally)
 supabase.exe
+supabase/.temp/
 
 # OS
 .DS_Store

@@ -117,6 +117,11 @@ async function apiFetch<T>(
 // ---------------------------------------------------------------------------
 
 export const sessions = {
+  list: (status?: Session["status"], limit = 50, offset = 0) =>
+    apiFetch<Session[]>(
+      `/sessions?limit=${limit}&offset=${offset}${status ? `&status=${status}` : ""}`
+    ),
+
   create: (title: string, context?: Record<string, unknown>) =>
     apiFetch<Session>("/sessions", {
       method: "POST",

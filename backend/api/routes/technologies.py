@@ -29,6 +29,30 @@ async def _db():
     )
 
 
+async def _get_technology_owner_or_404(db, tech_id: str) -> str:
+    res = await db.table("technologies").select("id,metadata").eq("id", tech_id).limit(1).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Technology not found")
+
+    metadata = res.data[0].get("metadata") or {}
+    owner_id = metadata.get("created_by") or metadata.get("created_by_user")
+    if not owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Technology owner is not recorded.",
+        )
+    return str(owner_id)
+
+
+async def _require_technology_owner(db, tech_id: str, user_id: str) -> None:
+    owner_id = await _get_technology_owner_or_404(db, tech_id)
+    if owner_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the technology owner can modify or publish it.",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -120,9 +144,12 @@ async def create_technology(body: TechnologyCreate, user: CurrentUser):
 @router.patch("/{tech_id}")
 async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentUser):
     db = await _db()
+    await _require_technology_owner(db, tech_id, user["sub"])
     update: dict[str, Any] = {k: v for k, v in body.model_dump().items() if v is not None}
     if "title" in update or "description" in update:
-        existing = (await db.table("technologies").select("title,description").eq("id", tech_id).single().execute()).data
+        existing = (
+            await db.table("technologies").select("title,description").eq("id", tech_id).single().execute()
+        ).data
         text = f"{update.get('title', existing['title'])}. {update.get('description', existing['description'])}"
         update["content_vector"] = await embed_text(text)
     res = await db.table("technologies").update(update).eq("id", tech_id).execute()
@@ -135,6 +162,7 @@ async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentU
 async def publish_technology(tech_id: str, user: CurrentUser):
     """Mark technology as published (available in marketplace)."""
     db = await _db()
+    await _require_technology_owner(db, tech_id, user["sub"])
     res = await db.table("technologies").update({"status": "published"}).eq("id", tech_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Technology not found")

@@ -53,20 +53,20 @@ class CriticLoop:
     Parameters
     ----------
     registry   : ScientistRegistry with at least lead, researcher, critic, synthesizer.
-    researcher : Name of the proposal scientist  (default: "Prometheus").
-    critic     : Name of the critique scientist  (default: "Socrates").
-    lead       : Name of the decision scientist  (default: "Athena").
-    synthesizer: Name of the memory scientist    (default: "Mnemosyne").
+    researcher : Name of the proposal scientist  (default: "Albert Einstein").
+    critic     : Name of the critique scientist  (default: "Isaac Newton").
+    lead       : Name of the decision scientist  (default: "Victoria Drake").
+    synthesizer: Name of the memory scientist    (default: "Richard Feynman").
     """
 
     def __init__(
         self,
         registry:    ScientistRegistry,
         *,
-        researcher:  str = "Prometheus",
-        critic:      str = "Socrates",
-        lead:        str = "Athena",
-        synthesizer: str = "Mnemosyne",
+        researcher:  str = "Albert Einstein",
+        critic:      str = "Isaac Newton",
+        lead:        str = "Victoria Drake",
+        synthesizer: str = "Richard Feynman",
     ) -> None:
         self._registry    = registry
         self._researcher  = researcher
