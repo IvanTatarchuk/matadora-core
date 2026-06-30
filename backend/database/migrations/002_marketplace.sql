@@ -28,26 +28,24 @@ CREATE INDEX IF NOT EXISTS technologies_vector_idx
     ON public.technologies USING ivfflat (content_vector vector_cosine_ops) WITH (lists = 50);
 
 ALTER TABLE public.technologies ENABLE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION public.technology_owned_by_current_user(p_metadata JSONB)
+RETURNS BOOLEAN LANGUAGE SQL STABLE AS $$
+    SELECT
+        auth.role() = 'service_role'
+        OR (
+            auth.role() = 'authenticated'
+            AND COALESCE(p_metadata->>'created_by', p_metadata->>'created_by_user') = auth.uid()::text
+        );
+$$;
+
 CREATE POLICY "Everyone can read published technologies"
     ON public.technologies FOR SELECT USING (status = 'published' OR auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can insert"
     ON public.technologies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can update their own"
     ON public.technologies FOR UPDATE
-    USING (
-        auth.role() = 'service_role'
-        OR (
-            auth.role() = 'authenticated'
-            AND COALESCE(metadata->>'created_by', metadata->>'created_by_user') = auth.uid()::text
-        )
-    )
-    WITH CHECK (
-        auth.role() = 'service_role'
-        OR (
-            auth.role() = 'authenticated'
-            AND COALESCE(metadata->>'created_by', metadata->>'created_by_user') = auth.uid()::text
-        )
-    );
+    USING (public.technology_owned_by_current_user(metadata))
+    WITH CHECK (public.technology_owned_by_current_user(metadata));
 
 -- ---------------------------------------------------------------------------
 -- 2. Matadora Wallets (one per user)

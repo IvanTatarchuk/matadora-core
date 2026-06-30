@@ -29,6 +29,12 @@ async def _db():
     )
 
 
+def _technology_owner_from_metadata(metadata: dict[str, Any]) -> str | None:
+    """Support both current and legacy ownership metadata keys."""
+    owner_id = metadata.get("created_by") or metadata.get("created_by_user")
+    return str(owner_id) if owner_id else None
+
+
 async def _get_technology_or_404(db, tech_id: str) -> dict[str, Any]:
     res = await (
         db.table("technologies")
@@ -45,13 +51,13 @@ async def _get_technology_or_404(db, tech_id: str) -> dict[str, Any]:
 async def _require_technology_owner(db, tech_id: str, user_id: str) -> dict[str, Any]:
     technology = await _get_technology_or_404(db, tech_id)
     metadata = technology.get("metadata") or {}
-    owner_id = metadata.get("created_by") or metadata.get("created_by_user")
+    owner_id = _technology_owner_from_metadata(metadata)
     if not owner_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Technology owner is not recorded.",
         )
-    if str(owner_id) != user_id:
+    if owner_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the technology owner can modify or publish it.",
