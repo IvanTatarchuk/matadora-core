@@ -29,28 +29,34 @@ async def _db():
     )
 
 
-async def _get_technology_owner_or_404(db, tech_id: str) -> str:
-    res = await db.table("technologies").select("id,metadata").eq("id", tech_id).limit(1).execute()
+async def _get_technology_or_404(db, tech_id: str) -> dict[str, Any]:
+    res = await (
+        db.table("technologies")
+        .select("id,title,description,metadata")
+        .eq("id", tech_id)
+        .limit(1)
+        .execute()
+    )
     if not res.data:
         raise HTTPException(status_code=404, detail="Technology not found")
+    return res.data[0]
 
-    metadata = res.data[0].get("metadata") or {}
+
+async def _require_technology_owner(db, tech_id: str, user_id: str) -> dict[str, Any]:
+    technology = await _get_technology_or_404(db, tech_id)
+    metadata = technology.get("metadata") or {}
     owner_id = metadata.get("created_by") or metadata.get("created_by_user")
     if not owner_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Technology owner is not recorded.",
         )
-    return str(owner_id)
-
-
-async def _require_technology_owner(db, tech_id: str, user_id: str) -> None:
-    owner_id = await _get_technology_owner_or_404(db, tech_id)
-    if owner_id != user_id:
+    if str(owner_id) != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the technology owner can modify or publish it.",
         )
+    return technology
 
 
 # ---------------------------------------------------------------------------
@@ -144,13 +150,13 @@ async def create_technology(body: TechnologyCreate, user: CurrentUser):
 @router.patch("/{tech_id}")
 async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentUser):
     db = await _db()
-    await _require_technology_owner(db, tech_id, user["sub"])
+    technology = await _require_technology_owner(db, tech_id, user["sub"])
     update: dict[str, Any] = {k: v for k, v in body.model_dump().items() if v is not None}
     if "title" in update or "description" in update:
-        existing = (
-            await db.table("technologies").select("title,description").eq("id", tech_id).single().execute()
-        ).data
-        text = f"{update.get('title', existing['title'])}. {update.get('description', existing['description'])}"
+        text = (
+            f"{update.get('title', technology['title'])}. "
+            f"{update.get('description', technology['description'])}"
+        )
         update["content_vector"] = await embed_text(text)
     res = await db.table("technologies").update(update).eq("id", tech_id).execute()
     if not res.data:
