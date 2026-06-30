@@ -25,6 +25,7 @@ async function apiFetch(path, options = {}) {
 // Sessions
 // ---------------------------------------------------------------------------
 export const sessions = {
+    list: (status, limit = 50, offset = 0) => apiFetch(`/sessions?limit=${limit}&offset=${offset}${status ? `&status=${status}` : ""}`),
     create: (title, context) => apiFetch("/sessions", {
         method: "POST",
         body: JSON.stringify({ title, context }),
