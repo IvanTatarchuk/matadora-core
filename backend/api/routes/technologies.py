@@ -35,6 +35,11 @@ def _technology_owner_from_metadata(metadata: dict[str, Any]) -> str | None:
     return str(owner_id) if owner_id else None
 
 
+def _technology_embedding_text(title: str, description: str) -> str:
+    parts = [title.strip(), description.strip()]
+    return " ".join(part for part in parts if part)
+
+
 async def _get_technology_or_404(db, tech_id: str) -> dict[str, Any]:
     res = await (
         db.table("technologies")
@@ -135,7 +140,7 @@ async def get_technology(tech_id: str, user: CurrentUser):
 async def create_technology(body: TechnologyCreate, user: CurrentUser):
     """Create a new technology (draft). Scientists or users can propose."""
     db = await _db()
-    vector = await embed_text(f"{body.title}. {body.description}")
+    vector = await embed_text(_technology_embedding_text(body.title, body.description))
     row: dict[str, Any] = {
         "title":          body.title,
         "description":    body.description,
@@ -159,9 +164,9 @@ async def update_technology(tech_id: str, body: TechnologyUpdate, user: CurrentU
     technology = await _require_technology_owner(db, tech_id, user["sub"])
     update: dict[str, Any] = {k: v for k, v in body.model_dump().items() if v is not None}
     if "title" in update or "description" in update:
-        text = (
-            f"{update.get('title', technology['title'])}. "
-            f"{update.get('description', technology['description'])}"
+        text = _technology_embedding_text(
+            update.get("title", technology["title"]),
+            update.get("description", technology["description"]),
         )
         update["content_vector"] = await embed_text(text)
     res = await db.table("technologies").update(update).eq("id", tech_id).execute()
